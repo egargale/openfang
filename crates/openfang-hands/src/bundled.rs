@@ -40,6 +40,11 @@ pub fn bundled_hands() -> Vec<(&'static str, &'static str, &'static str)> {
             include_str!("../bundled/browser/HAND.toml"),
             include_str!("../bundled/browser/SKILL.md"),
         ),
+        (
+            "finance-monitor",
+            include_str!("../bundled/finance-monitor/HAND.toml"),
+            include_str!("../bundled/finance-monitor/SKILL.md"),
+        ),
     ]
 }
 
@@ -71,7 +76,7 @@ mod tests {
     #[test]
     fn bundled_hands_count() {
         let hands = bundled_hands();
-        assert_eq!(hands.len(), 7);
+        assert_eq!(hands.len(), 8);
     }
 
     #[test]
@@ -199,6 +204,35 @@ mod tests {
         assert!(!def.dashboard.metrics.is_empty());
         assert!((def.agent.temperature - 0.3).abs() < f32::EPSILON);
         assert_eq!(def.agent.max_iterations, Some(60));
+    }
+
+    #[test]
+    fn parse_finance_monitor_hand() {
+        let (id, toml_content, skill_content) = bundled_hands()
+            .into_iter()
+            .find(|(id, _, _)| *id == "finance-monitor")
+            .unwrap();
+        let def = parse_bundled(id, toml_content, skill_content).unwrap();
+        assert_eq!(def.id, "finance-monitor");
+        assert_eq!(def.name, "Finance Monitor Hand");
+        assert_eq!(def.category, crate::HandCategory::Data);
+        assert!(def.skill_content.is_some());
+        assert!(def.requires.is_empty());
+        assert!(def.tools.contains(&"schedule_create".to_string()));
+        assert!(def.tools.contains(&"memory_store".to_string()));
+        assert!(def.tools.contains(&"memory_recall".to_string()));
+        assert!(def.tools.contains(&"event_publish".to_string()));
+        assert!(!def.settings.is_empty());
+        assert!(!def.dashboard.metrics.is_empty());
+        assert!((def.agent.temperature - 0.3).abs() < f32::EPSILON);
+        assert_eq!(def.agent.max_iterations, Some(100));
+        // Check skills are defined
+        assert!(!def.skills.is_empty());
+        assert!(def.skills.contains(&"tv-screener".to_string()));
+        assert!(def.skills.contains(&"finance-data".to_string()));
+        assert!(def.skills.contains(&"finance-analysis".to_string()));
+        assert!(def.skills.contains(&"finance-charts".to_string()));
+        assert!(def.skills.contains(&"finance-forecast".to_string()));
     }
 
     #[test]

@@ -1,7 +1,13 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+---
+
 # OpenFang — Agent Instructions
 
 ## Project Overview
-OpenFang is an open-source Agent Operating System written in Rust (14 crates).
+OpenFang is an open-source Agent Operating System written in Rust (14 crates, 137K+ LOC).
 - Config: `~/.openfang/config.toml`
 - Default API: `http://127.0.0.1:4200`
 - CLI binary: `target/release/openfang.exe` (or `target/debug/openfang.exe`)
@@ -10,8 +16,23 @@ OpenFang is an open-source Agent Operating System written in Rust (14 crates).
 After every feature implementation, run ALL THREE checks:
 ```bash
 cargo build --workspace --lib          # Must compile (use --lib if exe is locked)
-cargo test --workspace                 # All tests must pass (currently 1744+)
+cargo test --workspace                 # All tests must pass (1,800+ tests)
 cargo clippy --workspace --all-targets -- -D warnings  # Zero warnings
+```
+
+### Running Specific Tests
+```bash
+# Run tests in a specific crate
+cargo test -p openfang-kernel
+
+# Run a specific test by name
+cargo test -p openfang-kernel --test integration_test
+
+# Run tests matching a pattern
+cargo test -p openfang-runtime agent_loop
+
+# Run a single test function
+cargo test -p openfang-memory test_session_repair -- --exact
 ```
 
 ## MANDATORY: Live Integration Testing
@@ -106,6 +127,41 @@ taskkill //PID <pid> //F
 | `/api/a2a/send` | POST | Send task to external A2A agent |
 | `/api/a2a/tasks/{id}/status` | GET | Check external A2A task status |
 
+## Crate Architecture
+
+14 Rust crates organized as a Cargo workspace. Dependencies flow downward:
+
+```
+openfang-cli            CLI interface, daemon auto-detect, MCP server mode
+    |
+openfang-desktop        Tauri 2.0 desktop app (WebView + system tray)
+    |
+openfang-api            REST/WS/SSE API server (Axum 0.8), 140+ endpoints
+    |
+openfang-kernel         Central coordinator: assembles all subsystems, RBAC, metering
+    |
+    +-- openfang-runtime    Agent loop, 3 LLM drivers, 53 tools, WASM sandbox, MCP/A2A
+    +-- openfang-channels   40 channel adapters (Telegram, Discord, Slack, etc.)
+    +-- openfang-wire       OFP P2P networking with HMAC-SHA256 auth
+    +-- openfang-migrate    Migration engine (OpenClaw YAML→TOML)
+    +-- openfang-skills     60 bundled skills, FangHub/ClawHub marketplace
+    +-- openfang-hands      7 autonomous Hands (researcher, lead, browser, etc.)
+    +-- openfang-extensions MCP templates, credential vault, OAuth2 PKCE
+    |
+openfang-memory         SQLite memory substrate, sessions, embeddings, usage tracking
+    |
+openfang-types          Core types: Agent, Capability, Event, Tool, Config, Taint, etc.
+```
+
+### Key Files to Know
+- `crates/openfang-api/src/server.rs` — Route registration, `AppState` struct, CORS, middleware
+- `crates/openfang-api/src/routes.rs` — Route handlers, `AppState` definition
+- `crates/openfang-kernel/src/kernel.rs` — `OpenFangKernel` struct, subsystem assembly
+- `crates/openfang-kernel/src/config.rs` — Config loading from `~/.openfang/config.toml`
+- `crates/openfang-runtime/src/agent_loop.rs` — Agent loop, LLM interaction, tool execution
+- `crates/openfang-types/src/config.rs` — `KernelConfig` struct with all config fields
+- `static/index_body.html` — Dashboard Alpine.js SPA
+
 ## Architecture Notes
 - **Don't touch `openfang-cli`** — user is actively building the interactive CLI
 - `KernelHandle` trait avoids circular deps between runtime and kernel
@@ -121,3 +177,5 @@ taskkill //PID <pid> //F
 - `AgentLoopResult` field is `.response` not `.response_text`
 - CLI command to start daemon is `start` not `daemon`
 - On Windows: use `taskkill //PID <pid> //F` (double slashes in MSYS2/Git Bash)
+- When adding new API endpoints, check both `server.rs` route registration AND `routes.rs` handler
+- All config structs use `#[serde(default)]` — new fields need sensible defaults
