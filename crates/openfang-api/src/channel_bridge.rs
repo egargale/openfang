@@ -1041,7 +1041,6 @@ pub async fn start_channel_bridge_with_config(
             let adapter = Arc::new(DiscordAdapter::new(
                 token,
                 dc_config.allowed_guilds.clone(),
-                dc_config.allowed_users.clone(),
                 dc_config.intents,
             ));
             adapters.push((adapter, dc_config.default_agent.clone()));
@@ -1065,7 +1064,9 @@ pub async fn start_channel_bridge_with_config(
     // WhatsApp — supports Cloud API mode (access token) or Web/QR mode (gateway URL)
     if let Some(ref wa_config) = config.whatsapp {
         let cloud_token = read_token(&wa_config.access_token_env, "WhatsApp");
-        let gateway_url = std::env::var(&wa_config.gateway_url_env).ok().filter(|u| !u.is_empty());
+        let gateway_url = std::env::var(&wa_config.gateway_url_env)
+            .ok()
+            .filter(|u| !u.is_empty());
 
         if cloud_token.is_some() || gateway_url.is_some() {
             let token = cloud_token.unwrap_or_default();

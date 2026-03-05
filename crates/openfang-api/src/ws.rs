@@ -797,7 +797,10 @@ async fn handle_command(
                 match state.kernel.set_agent_model(agent_id, args) {
                     Ok(()) => {
                         let msg = if let Some(entry) = state.kernel.registry.get(agent_id) {
-                            format!("Model switched to: {} (provider: {})", entry.manifest.model.model, entry.manifest.model.provider)
+                            format!(
+                                "Model switched to: {} (provider: {})",
+                                entry.manifest.model.model, entry.manifest.model.provider
+                            )
                         } else {
                             format!("Model switched to: {args}")
                         };
@@ -1121,7 +1124,8 @@ fn classify_streaming_error(err: &openfang_kernel::error::KernelError) -> String
             }
         }
         llm_errors::LlmErrorCategory::Format => {
-            "LLM request failed. Check your API key and model configuration in Settings.".to_string()
+            "LLM request failed. Check your API key and model configuration in Settings."
+                .to_string()
         }
         _ => classified.sanitized_message,
     }
